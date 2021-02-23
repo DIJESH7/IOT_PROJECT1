@@ -15,6 +15,7 @@ ORDERED_OBJS += \
 "./spi0.obj" \
 "./tm4c123gh6pm_startup_ccs.obj" \
 "./uart0.obj" \
+"./uart_input.obj" \
 "./wait.obj" \
 "../tm4c123gh6pm.cmd" \
 $(GEN_CMDS__FLAG) \
@@ -145,7 +146,7 @@ all: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 IOT_project1.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: "$@"'
 	@echo 'Invoking: ARM Linker'
-	"/Applications/ti/ccs1011/ccs/tools/compiler/ti-cgt-arm_20.2.1.LTS/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 -me --define=ccs="ccs" --define=PART_TM4C123GH6PM -g --gcc --diag_warning=225 --diag_wrap=off --display_error_number --abi=eabi -z -m"IOT_project1.map" --heap_size=0 --stack_size=512 -i"/Applications/ti/ccs1011/ccs/tools/compiler/ti-cgt-arm_20.2.1.LTS/lib" -i"/Applications/ti/ccs1011/ccs/tools/compiler/ti-cgt-arm_20.2.1.LTS/include" --reread_libs --diag_wrap=off --display_error_number --warn_sections --xml_link_info="IOT_project1_linkInfo.xml" --rom_model -o "IOT_project1.out" $(ORDERED_OBJS)
+	"/Applications/ti/ccs1011/ccs/tools/compiler/ti-cgt-arm_20.2.1.LTS/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 -me --define=ccs="ccs" --define=PART_TM4C123GH6PM -g --gcc --diag_warning=225 --diag_wrap=off --display_error_number --abi=eabi -z -m"IOT_project1.map" --heap_size=0 --stack_size=4096 -i"/Applications/ti/ccs1011/ccs/tools/compiler/ti-cgt-arm_20.2.1.LTS/lib" -i"/Applications/ti/ccs1011/ccs/tools/compiler/ti-cgt-arm_20.2.1.LTS/include" --reread_libs --diag_wrap=off --display_error_number --warn_sections --xml_link_info="IOT_project1_linkInfo.xml" --rom_model -o "IOT_project1.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: "$@"'
 	@echo ' '
 
@@ -159,8 +160,8 @@ IOT_project1.hex: $(EXE_OUTPUTS)
 # Other Targets
 clean:
 	-$(RM) $(BIN_OUTPUTS__QUOTED)$(EXE_OUTPUTS__QUOTED)
-	-$(RM) "clock.obj" "eth0.obj" "ethernet.obj" "gpio.obj" "spi0.obj" "tm4c123gh6pm_startup_ccs.obj" "uart0.obj" "wait.obj" 
-	-$(RM) "clock.d" "eth0.d" "ethernet.d" "gpio.d" "spi0.d" "tm4c123gh6pm_startup_ccs.d" "uart0.d" "wait.d" 
+	-$(RM) "clock.obj" "eth0.obj" "ethernet.obj" "gpio.obj" "spi0.obj" "tm4c123gh6pm_startup_ccs.obj" "uart0.obj" "uart_input.obj" "wait.obj" 
+	-$(RM) "clock.d" "eth0.d" "ethernet.d" "gpio.d" "spi0.d" "tm4c123gh6pm_startup_ccs.d" "uart0.d" "uart_input.d" "wait.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 

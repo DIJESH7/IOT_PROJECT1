@@ -19,6 +19,7 @@ ethernet.obj: ../clock.h
 ethernet.obj: ../gpio.h
 ethernet.obj: ../spi0.h
 ethernet.obj: ../uart0.h
+ethernet.obj: ../uart_input.h
 ethernet.obj: ../wait.h
 ethernet.obj: ../eth0.h
 ethernet.obj: ../tm4c123gh6pm.h
@@ -42,6 +43,7 @@ ethernet.obj: ../tm4c123gh6pm.h
 ../gpio.h: 
 ../spi0.h: 
 ../uart0.h: 
+../uart_input.h: 
 ../wait.h: 
 ../eth0.h: 
 ../tm4c123gh6pm.h: 

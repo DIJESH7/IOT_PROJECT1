@@ -60,6 +60,7 @@
 #include "gpio.h"
 #include "spi0.h"
 #include "uart0.h"
+#include "uart_input.h"
 #include "wait.h"
 #include "eth0.h"
 #include "tm4c123gh6pm.h"
@@ -69,7 +70,10 @@
 #define BLUE_LED PORTF,2
 #define GREEN_LED PORTF,3
 #define PUSH_BUTTON PORTF,4
-
+uint32_t ReadIndex = 0;
+uint32_t WriteIndex = 0;
+uint32_t BUFFER_LENGTH = 100;
+char chartxBuffer[100];
 //-----------------------------------------------------------------------------
 // Subroutines                
 //-----------------------------------------------------------------------------
@@ -145,6 +149,30 @@ void displayConnectionInfo()
         putsUart0("Link is up\n");
     else
         putsUart0("Link is down\n");
+}
+void displayUart0(char str[])
+{
+
+    bool full;
+
+    full = ((WriteIndex + 1) % BUFFER_LENGTH) == ReadIndex;
+
+    if (!full)
+    {
+        while (str[WriteIndex] != '\0')
+        {
+            chartxBuffer[WriteIndex] = str[WriteIndex];
+            WriteIndex = (WriteIndex + 1) % BUFFER_LENGTH;
+        }
+        if (UART0_FR_R & UART_FR_TXFE)
+        {
+            UART0_DR_R = chartxBuffer[ReadIndex];
+            ReadIndex = (ReadIndex + 1) % BUFFER_LENGTH;
+        }
+
+        UART0_IM_R = UART_IM_TXIM;
+    }
+
 }
 
 //bool checkCommand(USER_DATA data)

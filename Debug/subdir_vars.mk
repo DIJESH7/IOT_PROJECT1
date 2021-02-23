@@ -14,6 +14,7 @@ C_SRCS += \
 ../spi0.c \
 ../tm4c123gh6pm_startup_ccs.c \
 ../uart0.c \
+../uart_input.c \
 ../wait.c 
 
 C_DEPS += \
@@ -24,6 +25,7 @@ C_DEPS += \
 ./spi0.d \
 ./tm4c123gh6pm_startup_ccs.d \
 ./uart0.d \
+./uart_input.d \
 ./wait.d 
 
 OBJS += \
@@ -34,6 +36,7 @@ OBJS += \
 ./spi0.obj \
 ./tm4c123gh6pm_startup_ccs.obj \
 ./uart0.obj \
+./uart_input.obj \
 ./wait.obj 
 
 OBJS__QUOTED += \
@@ -44,6 +47,7 @@ OBJS__QUOTED += \
 "spi0.obj" \
 "tm4c123gh6pm_startup_ccs.obj" \
 "uart0.obj" \
+"uart_input.obj" \
 "wait.obj" 
 
 C_DEPS__QUOTED += \
@@ -54,6 +58,7 @@ C_DEPS__QUOTED += \
 "spi0.d" \
 "tm4c123gh6pm_startup_ccs.d" \
 "uart0.d" \
+"uart_input.d" \
 "wait.d" 
 
 C_SRCS__QUOTED += \
@@ -64,6 +69,7 @@ C_SRCS__QUOTED += \
 "../spi0.c" \
 "../tm4c123gh6pm_startup_ccs.c" \
 "../uart0.c" \
+"../uart_input.c" \
 "../wait.c" 
 
 
