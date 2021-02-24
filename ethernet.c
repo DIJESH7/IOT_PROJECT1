@@ -36,7 +36,7 @@
 
 // sudo ethtool --offload eno2 tx off rx off
 // in wireshark, preferences->protocol->ipv4->validate the checksum if possible
-// in wireshark, preferences->protocol->udp->validate the checksum if possible
+// in wireshark, preferences->protocol->udp->validate the checksum if possible tcp too
 
 //-----------------------------------------------------------------------------
 // Sending UDP test packets
@@ -111,6 +111,7 @@ void displayConnectionInfo()
             putcUart0(':');
     }
     putcUart0('\n');
+            putcUart0('\r');
     etherGetIpAddress(ip);
     putsUart0("IP: ");
     for (i = 0; i < 4; i++)
@@ -125,6 +126,7 @@ void displayConnectionInfo()
     else
         putsUart0(" (static)");
     putcUart0('\n');
+            putcUart0('\r');
     etherGetIpSubnetMask(ip);
     putsUart0("SN: ");
     for (i = 0; i < 4; i++)
@@ -135,6 +137,7 @@ void displayConnectionInfo()
             putcUart0('.');
     }
     putcUart0('\n');
+            putcUart0('\r');
     etherGetIpGatewayAddress(ip);
     putsUart0("GW: ");
     for (i = 0; i < 4; i++)
@@ -145,6 +148,7 @@ void displayConnectionInfo()
             putcUart0('.');
     }
     putcUart0('\n');
+            putcUart0('\r');
     if (etherIsLinkUp())
         putsUart0("Link is up\n");
     else
@@ -175,11 +179,14 @@ void displayUart0(char str[])
 
 }
 
-//bool checkCommand(USER_DATA data)
-//{
-//    bool valid = false;
-//    if (isCommand(&data, "set", 2))
-//    {
+bool checkCommand(USER_DATA data_input)
+{
+    bool valid = false;
+    if (isCommand(&data_input, "reboot", 0))
+    {
+        putsUart0("rebooted");
+    }
+}
 
 //-----------------------------------------------------------------------------
 // Main
@@ -191,10 +198,11 @@ void displayUart0(char str[])
 
 int main(void)
 {
+
     uint8_t* udpData;
     uint8_t buffer[MAX_PACKET_SIZE];
     etherHeader *data = (etherHeader*) buffer;
-
+    USER_DATA data_input;
     // Init controller
     initHw();
 
@@ -202,8 +210,11 @@ int main(void)
     initUart0();
     setUart0BaudRate(115200, 40e6);
 
+    putcUart0('\n');
+ putcUart0('\r');
     // Init ethernet interface (eth0)
-    putsUart0("\nStarting eth0\n");
+    putsUart0("Starting eth0\n");
+    putcUart0('\r');
     etherSetMacAddress(2, 3, 4, 5, 6, 103);
     etherDisableDhcpMode();
     etherSetIpAddress(192, 168, 1, 103);
@@ -224,6 +235,20 @@ int main(void)
     // but the goal here is simplicity
     while (true)
     {
+        getsUart0(&data_input);
+        putsUart0(data_input.buffer);
+
+                // Parse fields
+                parseFields(&data_input);
+
+                // Echo back the parsed field information (type and fields)
+
+                putcUart0('\n');
+                putcUart0('\r');
+
+
+                bool valid = false;
+                valid = checkCommand(data_input);
         // Put terminal processing here
         if (kbhitUart0())
         {
