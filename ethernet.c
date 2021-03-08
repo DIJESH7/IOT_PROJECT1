@@ -29,14 +29,13 @@
 //   DIN (UART1TX) on PC5
 //   DOUT (UART1RX) on PC4
 
-
 //-----------------------------------------------------------------------------
 // Configuring Wireshark to examine packets
 //-----------------------------------------------------------------------------
 
 // sudo ethtool --offload eno2 tx off rx off
 // in wireshark, preferences->protocol->ipv4->validate the checksum if possible
-// in wireshark, preferences->protocol->udp->validate the checksum if possible tcp too
+// in wireshark, preferences->protocol->udp->validate the checksum if possible
 
 //-----------------------------------------------------------------------------
 // Sending UDP test packets
@@ -74,6 +73,8 @@ uint32_t ReadIndex = 0;
 uint32_t WriteIndex = 0;
 uint32_t BUFFER_LENGTH = 100;
 char chartxBuffer[100];
+uint8_t mqtt_ip[];
+extern uint8_t macAddress[];
 //-----------------------------------------------------------------------------
 // Subroutines                
 //-----------------------------------------------------------------------------
@@ -107,18 +108,18 @@ void displayConnectionInfo()
     {
         sprintf(str, "%02x", mac[i]);
         putsUart0(str);
-        if (i < 6-1)
+        if (i < 6 - 1)
             putcUart0(':');
     }
     putcUart0('\n');
-            putcUart0('\r');
+    putcUart0('\r');
     etherGetIpAddress(ip);
     putsUart0("IP: ");
     for (i = 0; i < 4; i++)
     {
         sprintf(str, "%u", ip[i]);
         putsUart0(str);
-        if (i < 4-1)
+        if (i < 4 - 1)
             putcUart0('.');
     }
     if (etherIsDhcpEnabled())
@@ -126,29 +127,29 @@ void displayConnectionInfo()
     else
         putsUart0(" (static)");
     putcUart0('\n');
-            putcUart0('\r');
+    putcUart0('\r');
     etherGetIpSubnetMask(ip);
     putsUart0("SN: ");
     for (i = 0; i < 4; i++)
     {
         sprintf(str, "%u", ip[i]);
         putsUart0(str);
-        if (i < 4-1)
+        if (i < 4 - 1)
             putcUart0('.');
     }
     putcUart0('\n');
-            putcUart0('\r');
+    putcUart0('\r');
     etherGetIpGatewayAddress(ip);
     putsUart0("GW: ");
     for (i = 0; i < 4; i++)
     {
         sprintf(str, "%u", ip[i]);
         putsUart0(str);
-        if (i < 4-1)
+        if (i < 4 - 1)
             putcUart0('.');
     }
     putcUart0('\n');
-            putcUart0('\r');
+    putcUart0('\r');
     if (etherIsLinkUp())
         putsUart0("Link is up\n");
     else
@@ -182,10 +183,37 @@ void displayUart0(char str[])
 bool checkCommand(USER_DATA data_input)
 {
     bool valid = false;
+    if (isCommand(&data_input, "mqtt", 4))
+    {
+        mqtt_ip[0] = getFieldInteger(&data_input, 1);
+        mqtt_ip[1] = getFieldInteger(&data_input, 2);
+        mqtt_ip[2] = getFieldInteger(&data_input, 3);
+        mqtt_ip[3] = getFieldInteger(&data_input, 4);
+
+        putsUart0("mqtt ip set");
+        putcUart0('\n');
+        putcUart0('\r');
+//           char str[16];
+//           sprintf(str, " %u", mqtt_ip[1]);
+//           putsUart0(str);
+//           putcUart0('\n');
+        valid = true;
+        return valid;
+    }
+
     if (isCommand(&data_input, "reboot", 0))
     {
         putsUart0("rebooted");
+        valid = true;
+        return valid;
     }
+
+    if (!valid)
+    {
+        putsUart0("Invalid command\n\r");
+        return valid;
+    }
+    return valid;
 }
 
 //-----------------------------------------------------------------------------
@@ -198,8 +226,7 @@ bool checkCommand(USER_DATA data_input)
 
 int main(void)
 {
-
-    uint8_t* udpData;
+    uint8_t *udpData;
     uint8_t buffer[MAX_PACKET_SIZE];
     etherHeader *data = (etherHeader*) buffer;
     USER_DATA data_input;
@@ -210,16 +237,13 @@ int main(void)
     initUart0();
     setUart0BaudRate(115200, 40e6);
 
-    putcUart0('\n');
- putcUart0('\r');
     // Init ethernet interface (eth0)
-    putsUart0("Starting eth0\n");
-    putcUart0('\r');
-    etherSetMacAddress(2, 3, 4, 5, 6, 103);
+    putsUart0("\nStarting eth0\n");
+    etherSetMacAddress(2, 3, 4, 5, 6, 109);
     etherDisableDhcpMode();
-    etherSetIpAddress(192, 168, 1, 103);
+    etherSetIpAddress(192, 168, 2, 109);
     etherSetIpSubnetMask(255, 255, 255, 0);
-    etherSetIpGatewayAddress(192, 168, 1, 1);
+    etherSetIpGatewayAddress(192, 168, 2, 1);
     etherInit(ETHER_UNICAST | ETHER_BROADCAST | ETHER_HALFDUPLEX);
     waitMicrosecond(100000);
     displayConnectionInfo();
@@ -235,24 +259,36 @@ int main(void)
     // but the goal here is simplicity
     while (true)
     {
-        getsUart0(&data_input);
-        putsUart0(data_input.buffer);
 
-                // Parse fields
-                parseFields(&data_input);
-
-                // Echo back the parsed field information (type and fields)
-
-                putcUart0('\n');
-                putcUart0('\r');
-
-
-                bool valid = false;
-                valid = checkCommand(data_input);
         // Put terminal processing here
         if (kbhitUart0())
         {
+            getsUart0(&data_input);
+            putsUart0(data_input.buffer);
 
+            // Parse fields
+            parseFields(&data_input);
+
+            // Echo back the parsed field information (type and fields)
+
+            putcUart0('\n');
+            putcUart0('\r');
+
+            if (isCommand(&data_input, "connect", 0))
+            {
+                uint8_t ip[4];
+                etherGetIpGatewayAddress(ip);
+                etherSendArpRequest(data, ip);
+                putsUart0("send arp");
+               // etherSendArpResponse(data);
+                char str[16];
+                           sprintf(str, " %u", macAddress[4]);
+                           putsUart0(str);
+
+            }
+
+            bool valid = false;
+            valid = checkCommand(data_input);
         }
 
         // Packet processing
@@ -282,18 +318,18 @@ int main(void)
                     // handle icmp ping request
                     if (etherIsPingRequest(data))
                     {
-                      etherSendPingResponse(data);
+                        etherSendPingResponse(data);
                     }
 
                     // Process UDP datagram
                     if (etherIsUdp(data))
                     {
                         udpData = etherGetUdpData(data);
-                        if (strcmp((char*)udpData, "on") == 0)
+                        if (strcmp((char*) udpData, "on") == 0)
                             setPinValue(GREEN_LED, 1);
-                        if (strcmp((char*)udpData, "off") == 0)
+                        if (strcmp((char*) udpData, "off") == 0)
                             setPinValue(GREEN_LED, 0);
-                        etherSendUdpResponse(data, (uint8_t*)"Received", 9);
+                        etherSendUdpResponse(data, (uint8_t*) "Received", 9);
                     }
                 }
             }

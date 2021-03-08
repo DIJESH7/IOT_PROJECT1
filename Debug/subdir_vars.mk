@@ -8,6 +8,7 @@ CMD_SRCS += \
 
 C_SRCS += \
 ../clock.c \
+../eeprom.c \
 ../eth0.c \
 ../ethernet.c \
 ../gpio.c \
@@ -19,6 +20,7 @@ C_SRCS += \
 
 C_DEPS += \
 ./clock.d \
+./eeprom.d \
 ./eth0.d \
 ./ethernet.d \
 ./gpio.d \
@@ -30,6 +32,7 @@ C_DEPS += \
 
 OBJS += \
 ./clock.obj \
+./eeprom.obj \
 ./eth0.obj \
 ./ethernet.obj \
 ./gpio.obj \
@@ -41,6 +44,7 @@ OBJS += \
 
 OBJS__QUOTED += \
 "clock.obj" \
+"eeprom.obj" \
 "eth0.obj" \
 "ethernet.obj" \
 "gpio.obj" \
@@ -52,6 +56,7 @@ OBJS__QUOTED += \
 
 C_DEPS__QUOTED += \
 "clock.d" \
+"eeprom.d" \
 "eth0.d" \
 "ethernet.d" \
 "gpio.d" \
@@ -63,6 +68,7 @@ C_DEPS__QUOTED += \
 
 C_SRCS__QUOTED += \
 "../clock.c" \
+"../eeprom.c" \
 "../eth0.c" \
 "../ethernet.c" \
 "../gpio.c" \
