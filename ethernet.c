@@ -200,6 +200,11 @@ bool checkCommand(USER_DATA data_input)
         valid = true;
         return valid;
     }
+    if (isCommand(&data_input, "connect", 0))
+    {
+        valid = true;
+        return valid;
+    }
 
     if (isCommand(&data_input, "reboot", 0))
     {
@@ -273,22 +278,48 @@ int main(void)
 
             putcUart0('\n');
             putcUart0('\r');
-
+            bool valid = false;
             if (isCommand(&data_input, "connect", 0))
             {
                 uint8_t ip[4];
                 etherGetIpGatewayAddress(ip);
                 etherSendArpRequest(data, ip);
                 putsUart0("send arp");
-               // etherSendArpResponse(data);
-                char str[16];
-                           sprintf(str, " %u", macAddress[4]);
-                           putsUart0(str);
+                valid = true;
 
             }
 
-            bool valid = false;
             valid = checkCommand(data_input);
+            putcUart0('\n');
+            putcUart0('\r');
+
+        }
+
+        if (etherIsDataAvailable())
+        {
+
+            // Get packet
+            etherGetPacket(data, MAX_PACKET_SIZE);
+            waitMicrosecond(100000);
+            // Handle ARP request
+            if (etherIsArpResponse(data))
+            {
+                waitMicrosecond(100000);
+                uint8_t i = 0;
+                uint8_t mqtt_mac[6];
+                for (i = 0; i < 6; i++)
+                {
+                    mqtt_mac[i] = data->sourceAddress[i];
+                    char str[16];
+                    sprintf(str, " %u", mqtt_mac[i]);
+                    putsUart0(str);
+                    putsUart0(".");
+
+                }
+                putcUart0('\n');
+                putcUart0('\r');
+            }
+
         }
 
         // Packet processing

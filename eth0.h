@@ -159,6 +159,7 @@ bool etherIsPingRequest(etherHeader *ether);
 void etherSendPingResponse(etherHeader *ether);
 
 bool etherIsArpRequest(etherHeader *ether);
+bool etherIsArpResponse(etherHeader *ether);
 void etherSendArpResponse(etherHeader *ether);
 void etherSendArpRequest(etherHeader *ether, uint8_t ip[]);
 

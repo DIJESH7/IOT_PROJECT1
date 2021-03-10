@@ -625,6 +625,22 @@ bool etherIsArpRequest(etherHeader *ether)
     return ok;
 }
 
+bool etherIsArpResponse(etherHeader *ether)
+{
+    arpPacket *arp = (arpPacket*)ether->data;
+    bool ok;
+    uint8_t i = 0;
+    ok = (ether->frameType == htons(0x0806));
+    while (ok & (i < IP_ADD_LENGTH))
+    {
+        ok = (arp->destIp[i] == ipAddress[i]);
+        i++;
+    }
+    if (ok)
+        ok = (arp->op == htons(2));
+    return ok;
+}
+
 // Sends an ARP response given the request data
 void etherSendArpResponse(etherHeader *ether)
 {
@@ -632,7 +648,7 @@ void etherSendArpResponse(etherHeader *ether)
     uint8_t i, tmp;
     // set op to response
     arp->op = htons(2);
-    // swap source and destination fields
+    // swap source and destination fieldsip.src == 192.168.2.1
     for (i = 0; i < HW_ADD_LENGTH; i++)
     {
         arp->destAddress[i] = arp->sourceAddress[i];
@@ -652,7 +668,7 @@ void etherSendArpResponse(etherHeader *ether)
 // Sends an ARP request
 void etherSendArpRequest(etherHeader *ether, uint8_t ip[])
 {
-    arpPacket *arp = (arpPacket*)ether->data;
+    arpPacket  *arp = (arpPacket*)ether->data;
     uint8_t i;
     // fill ethernet frame
     for (i = 0; i < HW_ADD_LENGTH; i++)
