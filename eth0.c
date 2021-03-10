@@ -124,16 +124,28 @@
 uint8_t nextPacketLsb = 0x00;
 uint8_t nextPacketMsb = 0x00;
 uint8_t sequenceId = 1;
-uint8_t macAddress[HW_ADD_LENGTH] = {2,3,4,5,6,7};
-uint8_t ipAddress[IP_ADD_LENGTH] = {0,0,0,0};
-uint8_t ipSubnetMask[IP_ADD_LENGTH] = {255,255,255,0};
-uint8_t ipGwAddress[IP_ADD_LENGTH] = {0,0,0,0};
-bool    dhcpEnabled = true;
+uint8_t macAddress[HW_ADD_LENGTH] = { 2, 3, 4, 5, 6, 7 };
+uint8_t ipAddress[IP_ADD_LENGTH] = { 0, 0, 0, 0 };
+uint8_t ipSubnetMask[IP_ADD_LENGTH] = { 255, 255, 255, 0 };
+uint8_t ipGwAddress[IP_ADD_LENGTH] = { 0, 0, 0, 0 };
+bool dhcpEnabled = true;
 
 //-----------------------------------------------------------------------------
 // Subroutines
 //-----------------------------------------------------------------------------
+void sendTCP(etherHeader *ether, socket *s, uint16_t flag)
+{
+    uint8_t i;
+    // fill ethernet frame
+    for (i = 0; i < HW_ADD_LENGTH; i++)
+    {
+        ether->destAddress[i] = s->dest_Hw[i];
+        ether->sourceAddress[i] = macAddress[i];
+    }
+    ether->frameType = 0x008;
 
+    etherPutPacket(ether, sizeof(etherHeader));
+}
 // Buffer is configured as follows
 // Receive buffer starts at 0x0000 (bottom 6666 bytes of 8K space)
 // Transmit buffer at 01A0A (top 1526 bytes of 8K space)
@@ -213,7 +225,8 @@ uint16_t etherReadPhy(uint8_t reg)
     etherWriteReg(MICMD, MIIRD);
     waitMicrosecond(11);
     etherSetBank(MISTAT);
-    while ((etherReadReg(MISTAT) & MIBUSY) != 0);
+    while ((etherReadReg(MISTAT) & MIBUSY) != 0)
+        ;
     etherSetBank(MICMD);
     etherWriteReg(MICMD, 0);
     data = etherReadReg(MIRDL);
@@ -278,7 +291,9 @@ void etherInit(uint16_t mode)
     selectPinDigitalInput(INT);
 
     // make sure that oscillator start-up timer has expired
-    while ((etherReadReg(ESTAT) & CLKRDY) == 0) {}
+    while ((etherReadReg(ESTAT) & CLKRDY) == 0)
+    {
+    }
 
     // disable transmission and reception of packets
     etherClearReg(ECON1, RXEN);
@@ -290,7 +305,7 @@ void etherInit(uint16_t mode)
     etherWriteReg(ERXSTH, HIBYTE(0x0000));
     etherWriteReg(ERXNDL, LOBYTE(0x1A09));
     etherWriteReg(ERXNDH, HIBYTE(0x1A09));
-   
+
     // initialize receiver write and read ptrs
     // at startup, will write from 0 to 1A08 only and will not overwrite rd ptr
     etherWriteReg(ERXWRPTL, LOBYTE(0x0000));
@@ -308,7 +323,7 @@ void etherInit(uint16_t mode)
     // bring mac out of reset
     etherSetBank(MACON2);
     etherWriteReg(MACON2, 0);
-  
+
     // enable mac rx, enable pause control for full duplex
     etherWriteReg(MACON1, TXPAUS | RXPAUS | MARXEN);
 
@@ -395,7 +410,7 @@ bool etherIsOverflow()
 uint16_t etherGetPacket(etherHeader *ether, uint16_t maxSize)
 {
     uint16_t i = 0, size, tmp16, status;
-    uint8_t *packet = (uint8_t*)ether;
+    uint8_t *packet = (uint8_t*) ether;
 
     // enable read from FIFO buffers
     etherReadMemStart();
@@ -468,17 +483,18 @@ bool etherPutPacket(etherHeader *ether, uint16_t size)
 
     // stop write
     etherWriteMemStop();
-  
+
     // request transmit
     etherWriteReg(ETXSTL, LOBYTE(0x1A0A));
     etherWriteReg(ETXSTH, HIBYTE(0x1A0A));
-    etherWriteReg(ETXNDL, LOBYTE(0x1A0A+size));
-    etherWriteReg(ETXNDH, HIBYTE(0x1A0A+size));
+    etherWriteReg(ETXNDL, LOBYTE(0x1A0A + size));
+    etherWriteReg(ETXNDH, HIBYTE(0x1A0A + size));
     etherClearReg(EIR, TXIF);
     etherSetReg(ECON1, TXRTS);
 
     // wait for completion
-    while ((etherReadReg(ECON1) & TXRTS) != 0);
+    while ((etherReadReg(ECON1) & TXRTS) != 0)
+        ;
 
     // determine success
     return ((etherReadReg(ESTAT) & TXABORT) == 0);
@@ -486,9 +502,9 @@ bool etherPutPacket(etherHeader *ether, uint16_t size)
 
 // Calculate sum of words
 // Must use getEtherChecksum to complete 1's compliment addition
-void etherSumWords(void* data, uint16_t sizeInBytes, uint32_t* sum)
+void etherSumWords(void *data, uint16_t sizeInBytes, uint32_t *sum)
 {
-    uint8_t* pData = (uint8_t*)data;
+    uint8_t *pData = (uint8_t*) data;
     uint16_t i;
     uint8_t phase = 0;
     uint16_t data_temp;
@@ -500,7 +516,7 @@ void etherSumWords(void* data, uint16_t sizeInBytes, uint32_t* sum)
             *sum += data_temp << 8;
         }
         else
-          *sum += *pData;
+            *sum += *pData;
         phase = 1 - phase;
         pData++;
     }
@@ -512,7 +528,7 @@ uint16_t getEtherChecksum(uint32_t sum)
     uint16_t result;
     // this is based on rfc1071
     while ((sum >> 16) > 0)
-      sum = (sum & 0xFFFF) + (sum >> 16);
+        sum = (sum & 0xFFFF) + (sum >> 16);
     result = sum & 0xFFFF;
     return ~result;
 }
@@ -537,7 +553,7 @@ uint16_t htons(uint16_t value)
 // Determines whether packet is IP datagram
 bool etherIsIp(etherHeader *ether)
 {
-    ipHeader *ip = (ipHeader*)ether->data;
+    ipHeader *ip = (ipHeader*) ether->data;
     uint8_t ipHeaderLength = (ip->revSize & 0xF) * 4;
     uint32_t sum = 0;
     bool ok;
@@ -554,7 +570,7 @@ bool etherIsIp(etherHeader *ether)
 // Must be an IP packet
 bool etherIsIpUnicast(etherHeader *ether)
 {
-    ipHeader *ip = (ipHeader*)ether->data;
+    ipHeader *ip = (ipHeader*) ether->data;
     uint8_t i = 0;
     bool ok = true;
     while (ok & (i < IP_ADD_LENGTH))
@@ -569,18 +585,18 @@ bool etherIsIpUnicast(etherHeader *ether)
 // Must be an IP packet
 bool etherIsPingRequest(etherHeader *ether)
 {
-    ipHeader *ip = (ipHeader*)ether->data;
+    ipHeader *ip = (ipHeader*) ether->data;
     uint8_t ipHeaderLength = (ip->revSize & 0xF) * 4;
-    icmpHeader *icmp = (icmpHeader*)((uint8_t*)ip + ipHeaderLength);
+    icmpHeader *icmp = (icmpHeader*) ((uint8_t*) ip + ipHeaderLength);
     return (ip->protocol == 0x01 & icmp->type == 8);
 }
 
 // Sends a ping response given the request data
 void etherSendPingResponse(etherHeader *ether)
 {
-    ipHeader *ip = (ipHeader*)ether->data;
+    ipHeader *ip = (ipHeader*) ether->data;
     uint8_t ipHeaderLength = (ip->revSize & 0xF) * 4;
-    icmpHeader *icmp = (icmpHeader*)((uint8_t*)ip + ipHeaderLength);
+    icmpHeader *icmp = (icmpHeader*) ((uint8_t*) ip + ipHeaderLength);
     uint8_t i, tmp;
     uint16_t icmp_size;
     uint32_t sum = 0;
@@ -594,7 +610,7 @@ void etherSendPingResponse(etherHeader *ether)
     for (i = 0; i < IP_ADD_LENGTH; i++)
     {
         tmp = ip->destIp[i];
-        ip->destIp[i] = ip ->sourceIp[i];
+        ip->destIp[i] = ip->sourceIp[i];
         ip->sourceIp[i] = tmp;
     }
     // this is a response
@@ -611,7 +627,7 @@ void etherSendPingResponse(etherHeader *ether)
 // Determines whether packet is ARP
 bool etherIsArpRequest(etherHeader *ether)
 {
-    arpPacket *arp = (arpPacket*)ether->data;
+    arpPacket *arp = (arpPacket*) ether->data;
     bool ok;
     uint8_t i = 0;
     ok = (ether->frameType == htons(0x0806));
@@ -627,7 +643,7 @@ bool etherIsArpRequest(etherHeader *ether)
 
 bool etherIsArpResponse(etherHeader *ether)
 {
-    arpPacket *arp = (arpPacket*)ether->data;
+    arpPacket *arp = (arpPacket*) ether->data;
     bool ok;
     uint8_t i = 0;
     ok = (ether->frameType == htons(0x0806));
@@ -644,7 +660,7 @@ bool etherIsArpResponse(etherHeader *ether)
 // Sends an ARP response given the request data
 void etherSendArpResponse(etherHeader *ether)
 {
-    arpPacket *arp = (arpPacket*)ether->data;
+    arpPacket *arp = (arpPacket*) ether->data;
     uint8_t i, tmp;
     // set op to response
     arp->op = htons(2);
@@ -668,7 +684,7 @@ void etherSendArpResponse(etherHeader *ether)
 // Sends an ARP request
 void etherSendArpRequest(etherHeader *ether, uint8_t ip[])
 {
-    arpPacket  *arp = (arpPacket*)ether->data;
+    arpPacket *arp = (arpPacket*) ether->data;
     uint8_t i;
     // fill ethernet frame
     for (i = 0; i < HW_ADD_LENGTH; i++)
@@ -701,9 +717,9 @@ void etherSendArpRequest(etherHeader *ether, uint8_t ip[])
 // Must be an IP packet
 bool etherIsUdp(etherHeader *ether)
 {
-    ipHeader *ip = (ipHeader*)ether->data;
+    ipHeader *ip = (ipHeader*) ether->data;
     uint8_t ipHeaderLength = (ip->revSize & 0xF) * 4;
-    udpHeader *udp = (udpHeader*)((uint8_t*)ip + ipHeaderLength);
+    udpHeader *udp = (udpHeader*) ((uint8_t*) ip + ipHeaderLength);
     bool ok;
     uint16_t tmp16;
     uint32_t sum = 0;
@@ -723,11 +739,11 @@ bool etherIsUdp(etherHeader *ether)
 }
 
 // Gets pointer to UDP payload of frame
-uint8_t * etherGetUdpData(etherHeader *ether)
+uint8_t* etherGetUdpData(etherHeader *ether)
 {
-    ipHeader *ip = (ipHeader*)ether->data;
+    ipHeader *ip = (ipHeader*) ether->data;
     uint8_t ipHeaderLength = (ip->revSize & 0xF) * 4;
-    udpHeader *udp = (udpHeader*)((uint8_t*)ip + ipHeaderLength);
+    udpHeader *udp = (udpHeader*) ((uint8_t*) ip + ipHeaderLength);
     return udp->data;
 }
 
@@ -736,9 +752,9 @@ uint8_t * etherGetUdpData(etherHeader *ether)
 // uses destination port of received packet as destination of this packet
 void etherSendUdpResponse(etherHeader *ether, uint8_t *udpData, uint8_t udpSize)
 {
-    ipHeader *ip = (ipHeader*)ether->data;
+    ipHeader *ip = (ipHeader*) ether->data;
     uint8_t ipHeaderLength = (ip->revSize & 0xF) * 4;
-    udpHeader *udp = (udpHeader*)((uint8_t*)ip + ipHeaderLength);
+    udpHeader *udp = (udpHeader*) ((uint8_t*) ip + ipHeaderLength);
     uint8_t *copyData;
     uint8_t i, tmp8;
     uint16_t tmp16;
@@ -838,7 +854,8 @@ void etherGetIpAddress(uint8_t ip[4])
 }
 
 // Sets IP subnet mask
-void etherSetIpSubnetMask(uint8_t mask0, uint8_t mask1, uint8_t mask2, uint8_t mask3)
+void etherSetIpSubnetMask(uint8_t mask0, uint8_t mask1, uint8_t mask2,
+                          uint8_t mask3)
 {
     ipSubnetMask[0] = mask0;
     ipSubnetMask[1] = mask1;
@@ -855,7 +872,8 @@ void etherGetIpSubnetMask(uint8_t mask[4])
 }
 
 // Sets IP gateway address
-void etherSetIpGatewayAddress(uint8_t ip0, uint8_t ip1, uint8_t ip2, uint8_t ip3)
+void etherSetIpGatewayAddress(uint8_t ip0, uint8_t ip1, uint8_t ip2,
+                              uint8_t ip3)
 {
     ipGwAddress[0] = ip0;
     ipGwAddress[1] = ip1;
@@ -872,7 +890,8 @@ void etherGetIpGatewayAddress(uint8_t ip[4])
 }
 
 // Sets MAC address
-void etherSetMacAddress(uint8_t mac0, uint8_t mac1, uint8_t mac2, uint8_t mac3, uint8_t mac4, uint8_t mac5)
+void etherSetMacAddress(uint8_t mac0, uint8_t mac1, uint8_t mac2, uint8_t mac3,
+                        uint8_t mac4, uint8_t mac5)
 {
     macAddress[0] = mac0;
     macAddress[1] = mac1;

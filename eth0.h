@@ -75,6 +75,16 @@ typedef struct _ipHeader // 20 or more bytes
   uint8_t data[0]; // optional bytes or udp/tcp/icmp header
 } ipHeader;
 
+typedef struct _socket
+{
+    uint8_t source_Ip[4];
+    uint8_t source_Hw[6];
+    uint16_t source_port;
+    uint8_t dest_Ip[4];
+    uint8_t dest_Hw[6];
+    uint16_t dest_port;
+
+}socket;
 typedef struct _icmpHeader // 8 bytes
 {
   uint8_t type;
@@ -151,6 +161,8 @@ bool etherIsDataAvailable();
 bool etherIsOverflow();
 uint16_t etherGetPacket(etherHeader *ether, uint16_t maxSize);
 bool etherPutPacket(etherHeader *ether, uint16_t size);
+
+void sendTCP(etherHeader *ether, socket* s, uint16_t flag);
 
 bool etherIsIp(etherHeader *ether);
 bool etherIsIpUnicast(etherHeader *ether);

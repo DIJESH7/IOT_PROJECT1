@@ -75,6 +75,10 @@ uint32_t BUFFER_LENGTH = 100;
 char chartxBuffer[100];
 uint8_t mqtt_ip[];
 extern uint8_t macAddress[];
+extern uint8_t ipAddress[];
+extern uint8_t ipGwAddress[];
+
+
 //-----------------------------------------------------------------------------
 // Subroutines                
 //-----------------------------------------------------------------------------
@@ -235,6 +239,7 @@ int main(void)
     uint8_t buffer[MAX_PACKET_SIZE];
     etherHeader *data = (etherHeader*) buffer;
     USER_DATA data_input;
+    socket *tcp=(socket*) buffer;
     // Init controller
     initHw();
 
@@ -302,6 +307,7 @@ int main(void)
             etherGetPacket(data, MAX_PACKET_SIZE);
             waitMicrosecond(100000);
             // Handle ARP request
+
             if (etherIsArpResponse(data))
             {
                 waitMicrosecond(100000);
@@ -310,6 +316,10 @@ int main(void)
                 for (i = 0; i < 6; i++)
                 {
                     mqtt_mac[i] = data->sourceAddress[i];
+
+                    tcp->dest_Hw[i]=mqtt_mac[i];
+                    tcp->source_Hw[i]=macAddress[i];
+
                     char str[16];
                     sprintf(str, " %u", mqtt_mac[i]);
                     putsUart0(str);
@@ -319,6 +329,23 @@ int main(void)
                 putcUart0('\n');
                 putcUart0('\r');
             }
+            uint8_t i = 0;
+            for (i = 0; i < 4; i++)
+                        {
+
+
+                            tcp->dest_Ip[i]=ipGwAddress[i];
+                            tcp->source_Ip[i]=ipAddress[i];
+
+//                            char str[16];
+//                            sprintf(str, " %u",tcp->dest_Ip[i]);
+//                            putsUart0(str);
+//                            putsUart0(".");
+
+                        }
+            uint16_t flag=1;
+            sendTCP(data, tcp , flag);
+
 
         }
 
