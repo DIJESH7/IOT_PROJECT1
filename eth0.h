@@ -162,7 +162,7 @@ bool etherIsOverflow();
 uint16_t etherGetPacket(etherHeader *ether, uint16_t maxSize);
 bool etherPutPacket(etherHeader *ether, uint16_t size);
 
-void sendTCP(etherHeader *ether, socket* s, uint16_t flag);
+void sendTCP(etherHeader *ether, socket s, uint16_t flag);
 
 bool etherIsIp(etherHeader *ether);
 bool etherIsIpUnicast(etherHeader *ether);

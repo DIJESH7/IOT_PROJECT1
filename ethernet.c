@@ -234,12 +234,13 @@ bool checkCommand(USER_DATA data_input)
 #define MAX_PACKET_SIZE 1522
 
 int main(void)
+
 {
     uint8_t *udpData;
     uint8_t buffer[MAX_PACKET_SIZE];
     etherHeader *data = (etherHeader*) buffer;
     USER_DATA data_input;
-    socket *tcp=(socket*) buffer;
+    socket tcp;
     // Init controller
     initHw();
 
@@ -307,7 +308,12 @@ int main(void)
             etherGetPacket(data, MAX_PACKET_SIZE);
             waitMicrosecond(100000);
             // Handle ARP request
+            tcp.dest_Hw[1]=2;
 
+            char str[16];
+            sprintf(str, " %u", tcp.dest_Hw[1]);
+            putsUart0(str);
+            putsUart0(".");
             if (etherIsArpResponse(data))
             {
                 waitMicrosecond(100000);
@@ -317,11 +323,11 @@ int main(void)
                 {
                     mqtt_mac[i] = data->sourceAddress[i];
 
-                    tcp->dest_Hw[i]=mqtt_mac[i];
-                    tcp->source_Hw[i]=macAddress[i];
+                    tcp.dest_Hw[i]=mqtt_mac[i];
+                    tcp.source_Hw[i]=macAddress[i];
 
                     char str[16];
-                    sprintf(str, " %u", mqtt_mac[i]);
+                    sprintf(str, " %u", tcp.source_Hw[i]);
                     putsUart0(str);
                     putsUart0(".");
 
@@ -334,8 +340,8 @@ int main(void)
                         {
 
 
-                            tcp->dest_Ip[i]=ipGwAddress[i];
-                            tcp->source_Ip[i]=ipAddress[i];
+                            tcp.dest_Ip[i]=ipGwAddress[i];
+                            tcp.source_Ip[i]=ipAddress[i];
 
 //                            char str[16];
 //                            sprintf(str, " %u",tcp->dest_Ip[i]);
@@ -343,7 +349,9 @@ int main(void)
 //                            putsUart0(".");
 
                         }
-            uint16_t flag=1;
+            tcp.dest_port=1883;
+            tcp.source_port=100000;
+            uint16_t flag=0x002;
             sendTCP(data, tcp , flag);
 
 
