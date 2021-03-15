@@ -137,48 +137,48 @@ void sendTCP(etherHeader *ether, socket s, uint16_t flag)
 {
     uint8_t i;
     ipHeader *ip = (ipHeader*) ether->data;
-  tcpHeader *tcp=(tcpHeader*)ip->data;
+    tcpHeader *tcp = (tcpHeader*) ip->data;
     // fill ethernet frame
     for (i = 0; i < HW_ADD_LENGTH; i++)
     {
         ether->destAddress[i] = s.dest_Hw[i];
         ether->sourceAddress[i] = macAddress[i];
     }
-    ether->frameType =htons(0x0800);
+    ether->frameType = htons(0x0800);
 
     ip->revSize = 0x45;
-    ip->typeOfService=0;
-    ip->length =htons(40);
+    ip->typeOfService = 0;
+    ip->length = htons(40);
     ip->ttl = 128;
-    ip->id=0;
+    ip->id = 0;
     ip->protocol = 0x06;
 
-    ip->flagsAndOffset=0;
+    ip->flagsAndOffset = 0;
 
-   // uint8_t ipHeaderLength = (ip->revSize & 0xF) * 4;
+    // uint8_t ipHeaderLength = (ip->revSize & 0xF) * 4;
     for (i = 0; i < IP_ADD_LENGTH; i++)
     {
-       ip->sourceIp[i]=s.source_Ip[i];
-        ip->destIp[i]=s.dest_Ip[i];
+        ip->sourceIp[i] = s.source_Ip[i];
+        ip->destIp[i] = s.dest_Ip[i];
 
     }
     etherCalcIpChecksum(ip);
     uint8_t ipHeaderLength = (ip->revSize & 0xF) * 4;
-       // tcpHeader *tcp = (tcpHeader*) ((uint8_t*) ip + ipHeaderLength);
-//
-     tcp->destPort=htons(1883);
-      tcp->sourcePort=htons(10000);
-     tcp->sequenceNumber=200;
-      tcp->acknowledgementNumber=0;
-      tcp->offsetFields=htons(0x5000|0x0002);
-      tcp->windowSize=htons(1000);
-     tcp->checksum=30;
-      tcp->urgentPointer=0;
+    // tcpHeader *tcp = (tcpHeader*) ((uint8_t*) ip + ipHeaderLength);
 
-////
+    tcp->destPort = htons(1883);
+    tcp->sourcePort = htons(10000);
+    tcp->sequenceNumber = 0;
+    tcp->acknowledgementNumber = 0;
+    tcp->offsetFields = htons(0x5000 | 0x0002);
+    tcp->windowSize = htons(1000);
+    tcp->checksum = htons(0xf708);
+    tcp->urgentPointer = 0;
+
+
     etherCalcIpChecksum(ip);
 
-    etherPutPacket(ether, 54);
+    etherPutPacket(ether, sizeof(etherHeader)+sizeof(tcpHeader)+sizeof(ipHeader));
 }
 // Buffer is configured as follows
 // Receive buffer starts at 0x0000 (bottom 6666 bytes of 8K space)

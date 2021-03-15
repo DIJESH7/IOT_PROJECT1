@@ -78,7 +78,6 @@ extern uint8_t macAddress[];
 extern uint8_t ipAddress[];
 extern uint8_t ipGwAddress[];
 
-
 //-----------------------------------------------------------------------------
 // Subroutines                
 //-----------------------------------------------------------------------------
@@ -294,6 +293,13 @@ int main(void)
                 valid = true;
 
             }
+            if (isCommand(&data_input, "tcp", 0))
+            {
+                uint16_t flag = 0x002;
+
+                sendTCP(data, tcp, flag);
+
+            }
 
             valid = checkCommand(data_input);
             putcUart0('\n');
@@ -306,99 +312,45 @@ int main(void)
 
             // Get packet
             etherGetPacket(data, MAX_PACKET_SIZE);
-            waitMicrosecond(100000);
+             waitMicrosecond(100000);
             // Handle ARP request
-            tcp.dest_Hw[1]=2;
 
-            char str[16];
-            sprintf(str, " %u", tcp.dest_Hw[1]);
-            putsUart0(str);
-            putsUart0(".");
             if (etherIsArpResponse(data))
             {
-                waitMicrosecond(100000);
                 uint8_t i = 0;
                 uint8_t mqtt_mac[6];
                 for (i = 0; i < 6; i++)
                 {
                     mqtt_mac[i] = data->sourceAddress[i];
-
-                    tcp.dest_Hw[i]=mqtt_mac[i];
-                    tcp.source_Hw[i]=macAddress[i];
-
+                    tcp.dest_Hw[i] = mqtt_mac[i];
+                    tcp.source_Hw[i] = macAddress[i];
                     char str[16];
                     sprintf(str, " %u", tcp.source_Hw[i]);
                     putsUart0(str);
                     putsUart0(".");
 
                 }
+
+                for (i = 0; i < 4; i++)
+                {
+
+                    tcp.dest_Ip[i] = ipGwAddress[i];
+                    tcp.source_Ip[i] = ipAddress[i];
+                }
+                tcp.dest_port = 1883;
+                tcp.source_port = 100000;
+
+                //waitMicrosecond(100000);
+
                 putcUart0('\n');
                 putcUart0('\r');
             }
-            uint8_t i = 0;
-            for (i = 0; i < 4; i++)
-                        {
-
-
-                            tcp.dest_Ip[i]=ipGwAddress[i];
-                            tcp.source_Ip[i]=ipAddress[i];
-
-//                            char str[16];
-//                            sprintf(str, " %u",tcp->dest_Ip[i]);
-//                            putsUart0(str);
-//                            putsUart0(".");
-
-                        }
-            tcp.dest_port=1883;
-            tcp.source_port=100000;
-            uint16_t flag=0x002;
-            sendTCP(data, tcp , flag);
-
 
         }
 
-        // Packet processing
-        if (etherIsDataAvailable())
-        {
-            if (etherIsOverflow())
-            {
-                setPinValue(RED_LED, 1);
-                waitMicrosecond(100000);
-                setPinValue(RED_LED, 0);
-            }
-
-            // Get packet
-            etherGetPacket(data, MAX_PACKET_SIZE);
-
-            // Handle ARP request
-            if (etherIsArpRequest(data))
-            {
-                etherSendArpResponse(data);
-            }
-
-            // Handle IP datagram
-            if (etherIsIp(data))
-            {
-                if (etherIsIpUnicast(data))
-                {
-                    // handle icmp ping request
-                    if (etherIsPingRequest(data))
-                    {
-                        etherSendPingResponse(data);
-                    }
-
-                    // Process UDP datagram
-                    if (etherIsUdp(data))
-                    {
-                        udpData = etherGetUdpData(data);
-                        if (strcmp((char*) udpData, "on") == 0)
-                            setPinValue(GREEN_LED, 1);
-                        if (strcmp((char*) udpData, "off") == 0)
-                            setPinValue(GREEN_LED, 0);
-                        etherSendUdpResponse(data, (uint8_t*) "Received", 9);
-                    }
-                }
-            }
-        }
     }
+
+    // Packet processing
+
 }
+
