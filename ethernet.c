@@ -79,8 +79,8 @@ extern uint8_t ipAddress[];
 extern uint8_t ipGwAddress[];
 uint32_t sequencenum = 0;
 uint32_t acknum = 0;
-uint16_t flag =0;
-uint32_t recieve=0;
+uint16_t flag = 0;
+uint32_t SENDACK = 0;
 //-----------------------------------------------------------------------------
 // Subroutines                
 //-----------------------------------------------------------------------------
@@ -309,8 +309,8 @@ int main(void)
             {
                 flag = 0x5000 | 0x0002;
 
-                sendTCP(data, tcp, flag, sequencenum, acknum,0);
-                recieve=1;
+                sendTCP(data, tcp, flag, sequencenum, acknum, 0);
+                SENDACK = 1;
 
             }
 
@@ -343,26 +343,28 @@ int main(void)
                 putcUart0('\n');
                 putcUart0('\r');
             }
-//            if(recieve==1)
-//            {
-//
-//                if (etherIsIp(data))
-//                            {
-//                                ipHeader *ip = (ipHeader*) data->data;
-//                                tcpHeader *revtcp = (tcpHeader*) ip->data;
-//                                sequencenum=ntohl(revtcp->acknowledgementNumber);
-//                                acknum=ntohl(revtcp->sequenceNumber)+1;
-//                                flag=0x5000|0x0010;
-//                                sendTCP(data,tcp,flag,sequencenum,acknum,0);
-//                                putsUart0("Done");
-//                                recieve=0;
-//
-//                            }
+            if (SENDACK == 1)
+            {
+                waitMicrosecond(100000);
 
+                if (etherIsIp(data))
+                {
+                    ipHeader *ip = (ipHeader*) data->data;
+                    tcpHeader *revtcp = (tcpHeader*) ip->data;
+                    sequencenum = ntohl(revtcp->acknowledgementNumber);
+                    acknum = ntohl(revtcp->sequenceNumber) + 1;
+                    flag = 0x5000 | 0x0010;
+                    sendTCP(data, tcp, flag, sequencenum, acknum, 0);
+                    SENDACK = 0;
+                    putsUart0("Done");
 
+                    waitMicrosecond(5000000);
+                    flag = 0x5000 | 0x0001;
+                    sendTCP(data, tcp, flag, sequencenum, acknum, 0);
+                }
 
-//        }
             }
+        }
 //
 
     }
