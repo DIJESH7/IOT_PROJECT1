@@ -1,3 +1,4 @@
+
 // ETH0 Library
 // Jason Losh
 
@@ -133,8 +134,39 @@ bool dhcpEnabled = true;
 //-----------------------------------------------------------------------------
 // Subroutines
 //-----------------------------------------------------------------------------
-void sendTCP(etherHeader *ether, socket s, uint16_t flag)
+//bool etherIsTcp(etherHeader* ether)
+//{
+//    ipHeader* ip = (ipHeader*)ether->data;
+//    tcpHeader* tcp = (tcpHeader*)ip->data;
+//
+//    uint16_t tcpLength = ntohs(ip->length) - (ip->revSize & 0xF) * 4;
+//    bool ok = (ip->protocol == 0x06);
+//    // Calculate the checksum to see if it is correct
+//    uint32_t sum = 0;
+//    if(ok)
+//    {
+//        /*
+//         * Pseudo-header of IP : 12 bytes
+//         * Source IP address
+//         * Destination IP address
+//         * Zero, Protocol : temp16
+//         * TCP length
+//         */
+//        etherSumWords(ip->sourceIp, 8, &sum);
+//        uint16_t temp16 = ip->protocol;
+//        temp16 = htons(temp16);
+//        etherSumWords(&temp16, 2, &sum);
+//        temp16 = htons(tcpLength);
+//        etherSumWords(&temp16, 2, &sum);
+//        etherSumWords(tcp, tcpLength, &sum);
+//        ok = (getEtherChecksum(sum) == 0);
+//    }
+//    return ok;
+//}
+void sendTCP(etherHeader *ether, socket s, uint16_t flag, uint32_t sequencenum,
+             uint32_t acknum,uint16_t datalength)
 {
+
     uint8_t i;
     ipHeader *ip = (ipHeader*) ether->data;
     tcpHeader *tcp = (tcpHeader*) ip->data;
@@ -162,23 +194,42 @@ void sendTCP(etherHeader *ether, socket s, uint16_t flag)
         ip->destIp[i] = s.dest_Ip[i];
 
     }
-    etherCalcIpChecksum(ip);
+
     uint8_t ipHeaderLength = (ip->revSize & 0xF) * 4;
     // tcpHeader *tcp = (tcpHeader*) ((uint8_t*) ip + ipHeaderLength);
 
-    tcp->destPort = htons(1883);
-    tcp->sourcePort = htons(10000);
-    tcp->sequenceNumber = 0;
-    tcp->acknowledgementNumber = 0;
-    tcp->offsetFields = htons(0x5000 | 0x0002);
+    tcp->destPort = htons(s.dest_port);
+    tcp->sourcePort = htons(s.source_port);
+    tcp->sequenceNumber = htonl(sequencenum);
+    tcp->acknowledgementNumber = htonl(acknum);
+    tcp->offsetFields = htons(flag);
     tcp->windowSize = htons(1000);
-    tcp->checksum = htons(0xf708);
+    tcp->checksum = 0;
     tcp->urgentPointer = 0;
+
+
+        uint32_t sum = 0;
+        uint16_t tmp16 = 0;
+
+        etherSumWords(ip->sourceIp, 8, &sum);
+
+        tmp16 = htons(ip->protocol);
+        etherSumWords(&tmp16, 2, &sum);
+        uint16_t offset = htons(flag);
+       uint8_t tcpHeaderLength =((offset&0xF0)>>4)*4;
+        //uint16_t tcpHeaderLength=20;
+        tmp16=htons(tcpHeaderLength+datalength);
+        etherSumWords(&tmp16, 2, &sum);
+
+        etherSumWords(tcp, tcpHeaderLength+datalength, &sum);
+
+        tcp->checksum = getEtherChecksum(sum);
+
 
 
     etherCalcIpChecksum(ip);
 
-    etherPutPacket(ether, sizeof(etherHeader)+sizeof(tcpHeader)+sizeof(ipHeader));
+    etherPutPacket(ether,sizeof(etherHeader) + tcpHeaderLength + sizeof(ipHeader));
 }
 // Buffer is configured as follows
 // Receive buffer starts at 0x0000 (bottom 6666 bytes of 8K space)
@@ -584,6 +635,12 @@ uint16_t htons(uint16_t value)
 }
 #define ntohs htons
 
+uint32_t htonl(uint32_t value)
+{
+    return ((0xFF000000 & value) >> 24) + ((0x00FF0000 & value) >> 8) +
+            ((0x0000FF00 & value) << 8) + ((0x000000FF & value) << 24);
+}
+#define ntohl htonl
 // Determines whether packet is IP datagram
 bool etherIsIp(etherHeader *ether)
 {

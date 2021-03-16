@@ -77,7 +77,10 @@ uint8_t mqtt_ip[];
 extern uint8_t macAddress[];
 extern uint8_t ipAddress[];
 extern uint8_t ipGwAddress[];
-
+uint32_t sequencenum = 0;
+uint32_t acknum = 0;
+uint16_t flag =0;
+uint32_t recieve=0;
 //-----------------------------------------------------------------------------
 // Subroutines                
 //-----------------------------------------------------------------------------
@@ -263,6 +266,15 @@ int main(void)
     waitMicrosecond(100000);
     setPinValue(GREEN_LED, 0);
     waitMicrosecond(100000);
+    uint8_t i = 0;
+    etherGetMacAddress(tcp.source_Hw);
+    etherGetIpAddress(tcp.source_Ip);
+    for (i = 0; i < 4; i++)
+    {
+        tcp.dest_Ip[i] = ipGwAddress[i];
+    }
+    tcp.dest_port = 1883;
+    tcp.source_port = 10000;
 
     // Main Loop
     // RTOS and interrupts would greatly improve this code,
@@ -295,9 +307,10 @@ int main(void)
             }
             if (isCommand(&data_input, "tcp", 0))
             {
-                uint16_t flag = 0x002;
+                flag = 0x5000 | 0x0002;
 
-                sendTCP(data, tcp, flag);
+                sendTCP(data, tcp, flag, sequencenum, acknum,0);
+                recieve=1;
 
             }
 
@@ -312,7 +325,7 @@ int main(void)
 
             // Get packet
             etherGetPacket(data, MAX_PACKET_SIZE);
-             waitMicrosecond(100000);
+            waitMicrosecond(100000);
             // Handle ARP request
 
             if (etherIsArpResponse(data))
@@ -323,30 +336,34 @@ int main(void)
                 {
                     mqtt_mac[i] = data->sourceAddress[i];
                     tcp.dest_Hw[i] = mqtt_mac[i];
-                    tcp.source_Hw[i] = macAddress[i];
-                    char str[16];
-                    sprintf(str, " %u", tcp.source_Hw[i]);
-                    putsUart0(str);
-                    putsUart0(".");
-
                 }
-
-                for (i = 0; i < 4; i++)
-                {
-
-                    tcp.dest_Ip[i] = ipGwAddress[i];
-                    tcp.source_Ip[i] = ipAddress[i];
-                }
-                tcp.dest_port = 1883;
-                tcp.source_port = 100000;
 
                 //waitMicrosecond(100000);
 
                 putcUart0('\n');
                 putcUart0('\r');
             }
+//            if(recieve==1)
+//            {
+//
+//                if (etherIsIp(data))
+//                            {
+//                                ipHeader *ip = (ipHeader*) data->data;
+//                                tcpHeader *revtcp = (tcpHeader*) ip->data;
+//                                sequencenum=ntohl(revtcp->acknowledgementNumber);
+//                                acknum=ntohl(revtcp->sequenceNumber)+1;
+//                                flag=0x5000|0x0010;
+//                                sendTCP(data,tcp,flag,sequencenum,acknum,0);
+//                                putsUart0("Done");
+//                                recieve=0;
+//
+//                            }
 
-        }
+
+
+//        }
+            }
+//
 
     }
 
