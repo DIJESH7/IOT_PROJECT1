@@ -18,7 +18,7 @@
 #include "uart0.h"
 #include "uart_input.h"
 
-
+bool enterispressed=false;
 
 bool isCommand(USER_DATA* data, const char strCommand[], uint8_t minArguments)
 {
@@ -238,6 +238,8 @@ char* getsUart0(USER_DATA* data)
     while(1)
     {
     char c = getcUart0();
+
+    //for backspace entered
     if (c==8||c==127)
     {
         if (count>0)
@@ -246,11 +248,16 @@ char* getsUart0(USER_DATA* data)
         }
         continue;
     }
+
+    //for return pressed
     if (c==13)
     {
         data->buffer[count]=0;
+        enterispressed=true;
         return data;
     }
+
+    //if character is anything greater than a space
     if (c>=32)
     {
         data->buffer[count]=c;
@@ -258,6 +265,7 @@ char* getsUart0(USER_DATA* data)
         if (count==MAX_CHARS)
         {
             data->buffer[count]==0;
+            enterispressed=true;
             return data;
         }
     }

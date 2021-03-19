@@ -134,42 +134,15 @@ bool dhcpEnabled = true;
 //-----------------------------------------------------------------------------
 // Subroutines
 //-----------------------------------------------------------------------------
-//bool etherIsTcp(etherHeader* ether)
-//{
-//    ipHeader* ip = (ipHeader*)ether->data;
-//    tcpHeader* tcp = (tcpHeader*)ip->data;
-//
-//    uint16_t tcpLength = ntohs(ip->length) - (ip->revSize & 0xF) * 4;
-//    bool ok = (ip->protocol == 0x06);
-//    // Calculate the checksum to see if it is correct
-//    uint32_t sum = 0;
-//    if(ok)
-//    {
-//        /*
-//         * Pseudo-header of IP : 12 bytes
-//         * Source IP address
-//         * Destination IP address
-//         * Zero, Protocol : temp16
-//         * TCP length
-//         */
-//        etherSumWords(ip->sourceIp, 8, &sum);
-//        uint16_t temp16 = ip->protocol;
-//        temp16 = htons(temp16);
-//        etherSumWords(&temp16, 2, &sum);
-//        temp16 = htons(tcpLength);
-//        etherSumWords(&temp16, 2, &sum);
-//        etherSumWords(tcp, tcpLength, &sum);
-//        ok = (getEtherChecksum(sum) == 0);
-//    }
-//    return ok;
-//}
+
 void sendTCP(etherHeader *ether, socket s, uint16_t flag, uint32_t sequencenum,
-             uint32_t acknum,uint16_t datalength)
+             uint32_t acknum,uint16_t datalength,uint8_t options[], uint8_t optionslength)
 {
 
     uint8_t i;
     ipHeader *ip = (ipHeader*) ether->data;
     tcpHeader *tcp = (tcpHeader*) ip->data;
+
     // fill ethernet frame
     for (i = 0; i < HW_ADD_LENGTH; i++)
     {
@@ -180,7 +153,7 @@ void sendTCP(etherHeader *ether, socket s, uint16_t flag, uint32_t sequencenum,
 
     ip->revSize = 0x45;
     ip->typeOfService = 0;
-    ip->length = htons(40);
+    //ip->length = htons(44);
     ip->ttl = 128;
     ip->id = 0;
     ip->protocol = 0x06;
@@ -203,9 +176,28 @@ void sendTCP(etherHeader *ether, socket s, uint16_t flag, uint32_t sequencenum,
     tcp->sequenceNumber = htonl(sequencenum);
     tcp->acknowledgementNumber = htonl(acknum);
     tcp->offsetFields = htons(flag);
-    tcp->windowSize = htons(1000);
+    tcp->windowSize = htons(1460);
     tcp->checksum = 0;
     tcp->urgentPointer = 0;
+
+//    tcp_option->type=options[0];
+//    tcp_option->length = options[1];
+//    tcp_option->a =options[2];
+
+//    tcp->data[0]=option_struct.type;
+//    tcp->data[1]=option_struct.length;
+//    tcp->data[2]=option_struct.a;
+
+
+    if (options!=0)
+    {
+        for (i=0;i<optionslength;i++)
+        {
+            tcp->data[i]=options[i];
+
+        }
+    }
+
 
 
         uint32_t sum = 0;
@@ -216,20 +208,21 @@ void sendTCP(etherHeader *ether, socket s, uint16_t flag, uint32_t sequencenum,
         tmp16 = htons(ip->protocol);
         etherSumWords(&tmp16, 2, &sum);
         uint16_t offset = htons(flag);
+
        uint8_t tcpHeaderLength =((offset&0xF0)>>4)*4;
-        //uint16_t tcpHeaderLength=20;
+
         tmp16=htons(tcpHeaderLength+datalength);
         etherSumWords(&tmp16, 2, &sum);
 
         etherSumWords(tcp, tcpHeaderLength+datalength, &sum);
 
-        tcp->checksum = getEtherChecksum(sum);
+        tcp->checksum =getEtherChecksum(sum);
 
 
-
+        ip->length = htons(sizeof(ipHeader) + tcpHeaderLength + datalength);
     etherCalcIpChecksum(ip);
 
-    etherPutPacket(ether,sizeof(etherHeader) + tcpHeaderLength + sizeof(ipHeader));
+    etherPutPacket(ether,sizeof(etherHeader) + tcpHeaderLength + sizeof(ipHeader)+datalength);
 }
 // Buffer is configured as follows
 // Receive buffer starts at 0x0000 (bottom 6666 bytes of 8K space)

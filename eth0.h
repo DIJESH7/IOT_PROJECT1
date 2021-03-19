@@ -136,6 +136,30 @@ typedef struct _tcpHeader // 20 or more bytes
   uint8_t  data[0];
 } tcpHeader;
 
+typedef struct _Mqttpacket
+{
+    uint8_t Control_Header;
+    uint8_t Packet_Remaining_length[4];
+    uint8_t Variable_length;
+    uint8_t data[0];
+}Mqttpacket;
+
+typedef struct _connectvariableheader
+{
+    uint32_t protocol_name;
+    uint8_t protocol_level;
+    uint8_t Connect_flags;
+    uint16_t keepalive_secs;
+    uint8_t data[0];
+}connectvariableheader;
+
+typedef  struct _optionsa
+{
+    uint8_t type;
+    uint8_t length;
+    uint16_t a;
+}optionsa;
+
 #define ETHER_UNICAST        0x80
 #define ETHER_BROADCAST      0x01
 #define ETHER_MULTICAST      0x02
@@ -162,8 +186,8 @@ bool etherIsOverflow();
 uint16_t etherGetPacket(etherHeader *ether, uint16_t maxSize);
 bool etherPutPacket(etherHeader *ether, uint16_t size);
 
-bool etherIsTcp(etherHeader* ether);
-void sendTCP(etherHeader *ether, socket s, uint16_t flag,uint32_t sequencenum, uint32_t acknum,uint16_t datalength);
+
+void sendTCP(etherHeader *ether, socket s, uint16_t flag,uint32_t sequencenum, uint32_t acknum,uint16_t datalength,uint8_t options[],uint8_t optionslength);
 void etherSumWords(void* data, uint16_t sizeInBytes, uint32_t* sum);
 uint16_t getEtherChecksum(uint32_t sum);
 void etherCalcIpChecksum(ipHeader *ip);
