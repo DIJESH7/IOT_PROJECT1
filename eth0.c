@@ -176,7 +176,7 @@ void sendTCP(etherHeader *ether, socket s, uint16_t flag, uint32_t sequencenum,
     tcp->sequenceNumber = htonl(sequencenum);
     tcp->acknowledgementNumber = htonl(acknum);
     tcp->offsetFields = htons(flag);
-    tcp->windowSize = htons(1460);
+    tcp->windowSize = htons(1060);
     tcp->checksum = 0;
     tcp->urgentPointer = 0;
 

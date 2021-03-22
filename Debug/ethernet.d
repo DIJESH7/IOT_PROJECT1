@@ -15,6 +15,7 @@ ethernet.obj: /Applications/ti/ccs1011/ccs/tools/compiler/ti-cgt-arm_20.2.1.LTS/
 ethernet.obj: /Applications/ti/ccs1011/ccs/tools/compiler/ti-cgt-arm_20.2.1.LTS/include/stdio.h
 ethernet.obj: /Applications/ti/ccs1011/ccs/tools/compiler/ti-cgt-arm_20.2.1.LTS/include/stdarg.h
 ethernet.obj: /Applications/ti/ccs1011/ccs/tools/compiler/ti-cgt-arm_20.2.1.LTS/include/string.h
+ethernet.obj: /Applications/ti/ccs1011/ccs/tools/compiler/ti-cgt-arm_20.2.1.LTS/include/stdlib.h
 ethernet.obj: ../clock.h
 ethernet.obj: ../gpio.h
 ethernet.obj: ../spi0.h
@@ -40,6 +41,7 @@ ethernet.obj: ../eeprom.h
 /Applications/ti/ccs1011/ccs/tools/compiler/ti-cgt-arm_20.2.1.LTS/include/stdio.h: 
 /Applications/ti/ccs1011/ccs/tools/compiler/ti-cgt-arm_20.2.1.LTS/include/stdarg.h: 
 /Applications/ti/ccs1011/ccs/tools/compiler/ti-cgt-arm_20.2.1.LTS/include/string.h: 
+/Applications/ti/ccs1011/ccs/tools/compiler/ti-cgt-arm_20.2.1.LTS/include/stdlib.h: 
 ../clock.h: 
 ../gpio.h: 
 ../spi0.h: 

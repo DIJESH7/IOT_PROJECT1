@@ -55,6 +55,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "clock.h"
 #include "gpio.h"
 #include "spi0.h"
@@ -83,6 +84,7 @@ uint32_t sequencenum = 0;
 uint32_t acknum = 0;
 uint16_t flag = 0;
 uint32_t SENDACK = 0;
+uint16_t data_length = 0;
 
 uint16_t eeprom_address = 0;
 typedef enum _mqttstate
@@ -226,6 +228,36 @@ bool checkCommand(USER_DATA data_input)
     return valid;
 }
 
+uint32_t MQTTremaininglength(uint32_t X)
+{
+    uint32_t encodedByte = 0;
+    do
+    {
+        encodedByte = X % 128;
+        X = X / 128;
+        if (X > 0)
+        {
+            encodedByte = encodedByte | 128;
+        }
+
+    }
+    while (X > 0);
+    return encodedByte;
+}
+
+void encodeUTF(uint8_t *output_data, char clientID[], uint16_t clientID_length)
+{
+//  output_data[0]= clientID_length>>8;
+//  output_data[1]= clientID_length& 0x00FF;
+    output_data[0] = 0x00;
+    output_data[1] = 0x04;
+    uint8_t i = 0;
+    for (i = 2; i < clientID_length + 2; i++)
+    {
+        output_data[i] = clientID[i - 2];
+    }
+}
+
 //-----------------------------------------------------------------------------
 // Main
 //-----------------------------------------------------------------------------
@@ -244,6 +276,9 @@ int main(void)
     socket tcp;
     optionsa option_struct;
     mqttstate current_state = idle;
+    ipHeader *revip = (ipHeader*) data->data;
+    tcpHeader *revtcp = (tcpHeader*) revip->data;
+
     // Init controller
     initHw();
     initEeprom();
@@ -262,8 +297,6 @@ int main(void)
     etherInit(ETHER_UNICAST | ETHER_BROADCAST | ETHER_HALFDUPLEX);
     waitMicrosecond(100000);
     displayConnectionInfo();
-    ipHeader *revip = (ipHeader*) data->data;
-    tcpHeader *revtcp = (tcpHeader*) revip->data;
 
     // Flash LED
     setPinValue(GREEN_LED, 1);
@@ -280,9 +313,9 @@ int main(void)
     tcp.dest_port = 1883;
     tcp.source_port = 10000;
     uint8_t optionslength = 4;
-    uint8_t options[] = {0x02, 0x04, 0x05, 0xB4};
-    option_struct.type=0x02;
-    option_struct.length=0x04;
+    uint8_t options[] = { 0x02, 0x04, 0x05, 0xB4 };
+    option_struct.type = 0x02;
+    option_struct.length = 0x04;
     option_struct.a = 0x04C4;
 
     // Main Loop
@@ -335,9 +368,8 @@ int main(void)
                 if (isCommand(&data_input, "tcp", 0))
                 {
                     current_state = sendTcpSyn;
-                    valid=true;
+                    valid = true;
                 }
-
 
                 valid = checkCommand(data_input);
                 putcUart0('\n');
@@ -361,18 +393,55 @@ int main(void)
         {
 
             flag = 0x6002;
-            sendTCP(data, tcp, flag, sequencenum, acknum, 0, options, optionslength);
+            data_length = 0;
+            sendTCP(data, tcp, flag, sequencenum, acknum, data_length, options,
+                    optionslength);
             current_state = waitTcpSynAck;
         }
 
-//        if (current_state == sendMqttConnect)
-//        {
-//            Mqttpacket connect=(Mqttpacket*)revtcp->data;
-//            connect->Control_Header=0x10;
-////            connect->Packet_Remaining_length=[0x80,0,0,0];
-////            connectvariableheader Mqtt_variable_connect = (connectvariableheader*)connect->Variable_length;
-//            sendTCP(data,tcp,flag,sequencenum,acknum,0)
-//        }
+        if (current_state == sendMqttConnect)
+        {
+            Mqttpacket *mqtt_connect = (Mqttpacket*) revtcp->data;
+            char clientID[4] = "dzes";
+            uint16_t clientID_length = sizeof(clientID);
+
+            //uint32_t test = MQTTremaininglength(129);
+
+            uint32_t Remaining_length = MQTTremaininglength(
+                    sizeof(connectvariableheader) + sizeof(clientID_length)
+                            + clientID_length);
+
+            mqtt_connect->Control_Header = 0x10;   //for connect
+            mqtt_connect->Packet_Remaining_length[0] = Remaining_length;
+
+            data_length = 2 + Remaining_length;
+
+            connectvariableheader *Mqtt_variable_connect =
+                    (connectvariableheader*) (mqtt_connect->Packet_Remaining_length
+                            + 1);
+
+            uint8_t *output_data =
+                    (uint8_t*) Mqtt_variable_connect->data_payload;
+
+            Mqtt_variable_connect->protocol_level = 0x04;
+            Mqtt_variable_connect->Connect_flags = htons(2); //for clean session
+            Mqtt_variable_connect->keepalive_secs = htons(30);
+            Mqtt_variable_connect->length = htons(0x04);
+           // strcpy(Mqtt_variable_connect->message, "MQTT");
+            Mqtt_variable_connect->message[0]='M';
+            Mqtt_variable_connect->message[1]='Q';
+            Mqtt_variable_connect->message[2]='T';
+            Mqtt_variable_connect->message[3]='T';
+           // uint8_t output[6];
+            encodeUTF(output_data, clientID, clientID_length);
+
+//            sequencenum = ntohl(revtcp->acknowledgementNumber);
+//                         acknum = ntohl(revtcp->sequenceNumber) + 4;
+            flag = 0x5000 | 0x0010 | 0x0008;      //PSH and ACK
+
+            sendTCP(data, tcp, flag, sequencenum, acknum, data_length, 0, 0);
+            current_state = idle;
+        }
 
         if (etherIsDataAvailable())
         {
@@ -399,27 +468,25 @@ int main(void)
             }
 
             waitMicrosecond(100000);
-//            if(revtcp->offsetFields & 0x012)
-//            {
-//                putsUart0("the offset is same");
-//            }
 
-            if (etherIsIp(data) && current_state == waitTcpSynAck && (ntohs(revtcp->offsetFields) & 0x012))
+            if (etherIsIp(data) && current_state == waitTcpSynAck
+                    && (ntohs(revtcp->offsetFields) & 0x012))
             {
-                current_state=sendMqttConnect;
+
                 sequencenum = ntohl(revtcp->acknowledgementNumber);
                 acknum = ntohl(revtcp->sequenceNumber) + 1;
                 flag = 0x5010;
-                sendTCP(data, tcp, flag, sequencenum, acknum, 0,0,0);
+                data_length = 0;
+                sendTCP(data, tcp, flag, sequencenum, acknum, data_length, 0,
+                        0);
                 SENDACK = 0;
                 putsUart0("Done");
 
                 waitMicrosecond(5000000);
+                current_state = sendMqttConnect;
 //                flag = 0x5000 | 0x0001;
 //                sendTCP(data, tcp, flag, sequencenum, acknum, 0,0,0);
             }
-
-
 
         }
 //

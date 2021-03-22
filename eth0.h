@@ -140,17 +140,19 @@ typedef struct _Mqttpacket
 {
     uint8_t Control_Header;
     uint8_t Packet_Remaining_length[4];
-    uint8_t Variable_length;
-    uint8_t data[0];
+    uint8_t Variable_length_header[0];
+    //uint8_t data_payload[0];
 }Mqttpacket;
 
 typedef struct _connectvariableheader
 {
-    uint32_t protocol_name;
+    uint16_t length;
+    char message[4];
     uint8_t protocol_level;
     uint8_t Connect_flags;
     uint16_t keepalive_secs;
-    uint8_t data[0];
+    //uint8_t *output_data;
+    uint8_t data_payload[0];
 }connectvariableheader;
 
 typedef  struct _optionsa
