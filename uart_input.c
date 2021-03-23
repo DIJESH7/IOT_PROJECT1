@@ -18,7 +18,7 @@
 #include "uart0.h"
 #include "uart_input.h"
 
-bool enterispressed=false;
+uint16_t strLength=0;
 
 bool isCommand(USER_DATA* data, const char strCommand[], uint8_t minArguments)
 {
@@ -61,7 +61,7 @@ bool isCommand(USER_DATA* data, const char strCommand[], uint8_t minArguments)
 //-----------------------------------------------------------------------------
 char* getFieldString(USER_DATA* data, uint8_t fieldNumber)
 {
-
+    strLength=0;
     if (fieldNumber>data->fieldCount)
       {
           return NULL;
@@ -70,7 +70,7 @@ char* getFieldString(USER_DATA* data, uint8_t fieldNumber)
 
     int i=data->fieldPosition[fieldNumber];
 
-    char check[MAX_CHARS];
+    char check[MAX_CHARS]=0;
     int loop=1;
     int store=0;
    while(loop)
@@ -86,6 +86,7 @@ char* getFieldString(USER_DATA* data, uint8_t fieldNumber)
                        }
         i++;
         store++;
+        strLength++;
 
 
     }
@@ -253,7 +254,7 @@ char* getsUart0(USER_DATA* data)
     if (c==13)
     {
         data->buffer[count]=0;
-        enterispressed=true;
+
         return data;
     }
 
@@ -265,7 +266,7 @@ char* getsUart0(USER_DATA* data)
         if (count==MAX_CHARS)
         {
             data->buffer[count]==0;
-            enterispressed=true;
+
             return data;
         }
     }
