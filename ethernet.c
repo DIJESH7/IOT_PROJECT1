@@ -719,6 +719,8 @@ int main(void)
                 flag = 0x5010;
                 sendTCP(data, tcp, flag, sequencenum, acknum, data_length, 0,
                         0);
+                setPinValue(BLUE_LED, 1);
+
                 current_state = idle;
             }
 
@@ -767,6 +769,10 @@ int main(void)
                 flag = 0x5010;
                 sendTCP(data, tcp, flag, sequencenum, acknum, data_length, 0,
                         0);
+                acknum=0;
+                sequencenum=0;
+
+                setPinValue(BLUE_LED,0);
                 current_state = idle;
                 //check_state = true;
 
