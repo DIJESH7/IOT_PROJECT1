@@ -19,7 +19,7 @@
 #include "uart_input.h"
 
 uint16_t strLength=0;
-
+bool check_return=false;
 bool isCommand(USER_DATA* data, const char strCommand[], uint8_t minArguments)
 {
 
@@ -254,7 +254,7 @@ char* getsUart0(USER_DATA* data)
     if (c==13)
     {
         data->buffer[count]=0;
-
+        check_return=true;
         return data;
     }
 
@@ -266,7 +266,7 @@ char* getsUart0(USER_DATA* data)
         if (count==MAX_CHARS)
         {
             data->buffer[count]==0;
-
+            check_return=true;
             return data;
         }
     }
