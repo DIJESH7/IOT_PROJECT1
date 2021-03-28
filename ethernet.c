@@ -1,3 +1,4 @@
+//DIJESH PRADHAN      1001516650
 //-----------------------------------------------------------------------------
 // Hardware Target
 //-----------------------------------------------------------------------------
@@ -95,6 +96,8 @@ uint8_t qos = 2;
 uint8_t server_ip[4];
 uint8_t client_ip[4];
 
+char subscribed_topics[3][80];
+
 uint16_t packet_id = 12;
 typedef enum _mqttstate
 {
@@ -113,7 +116,8 @@ typedef enum _mqttstate
     suback,
     unsuback,
     disconnect,
-    disconnectack
+    disconnectack,
+    finack
 } mqttstate;
 //-----------------------------------------------------------------------------
 // Subroutines                
@@ -244,24 +248,56 @@ bool checkCommand(USER_DATA data_input)
     }
     return valid;
 }
-
-uint32_t MQTTremaininglength(uint32_t X)
+//
+//uint32_t MQTTremaininglength(uint32_t X)
+//{
+//    uint32_t encodedByte = 0;
+//    do
+//    {
+//        encodedByte = X % 128;
+//        X = X / 128;
+//        if (X > 0)
+//        {
+//            encodedByte = encodedByte | 128;
+//        }
+//
+//    }
+//    while (X > 0);
+//    return encodedByte;
+//}
+uint32_t MQTTremaininglength(uint32_t X, uint8_t bytes)
 {
     uint32_t encodedByte = 0;
+    uint32_t temp = 0;
+    bytes = 0;
+
     do
     {
         encodedByte = X % 128;
         X = X / 128;
+        if (X == 0 && bytes == 0)
+        {
+            temp = encodedByte;
+        }
         if (X > 0)
         {
+            bytes++;
             encodedByte = encodedByte | 128;
+            encodedByte = encodedByte << 8;
+            temp = encodedByte | X;
+
         }
 
     }
     while (X > 0);
-    return encodedByte;
+
+    return temp;
 }
 
+//uint32_t decodeRemainingLength(uint32_t X, uint8_t bytes)
+//{
+//
+//}
 //-----------------------------------------------------------------------------
 // Main
 //-----------------------------------------------------------------------------
@@ -273,7 +309,7 @@ uint32_t MQTTremaininglength(uint32_t X)
 int main(void)
 
 {
-    uint8_t *udpData;
+
     uint8_t buffer[MAX_PACKET_SIZE];
     etherHeader *data = (etherHeader*) buffer;
     USER_DATA data_input;
@@ -308,12 +344,12 @@ int main(void)
     server_ip[2] = (temp_ip & 0x0000ff00) >> 8;
     server_ip[3] = (temp_ip & 0x000000ff);
 
-    uint32_t temp2_ip=readEeprom(eeprom_address+1);
+    uint32_t temp2_ip = readEeprom(eeprom_address + 1);
     client_ip[0] = (temp2_ip & 0xff000000) >> 24;
     client_ip[1] = (temp2_ip & 0x00ff0000) >> 16;
     client_ip[2] = (temp2_ip & 0x0000ff00) >> 8;
     client_ip[3] = (temp2_ip & 0x000000ff);
-    etherSetIpAddress(client_ip[0],client_ip[1],client_ip[2],client_ip[3]);
+    etherSetIpAddress(client_ip[0], client_ip[1], client_ip[2], client_ip[3]);
     // Flash LED
     setPinValue(GREEN_LED, 1);
     waitMicrosecond(100000);
@@ -328,6 +364,11 @@ int main(void)
     }
     tcp.dest_port = 1883;
     tcp.source_port = 10000;
+    if (server_ip[0] == 192 && server_ip[1] == 168 && server_ip[2] == 2
+            && server_ip[3] == 1)
+    {
+        current_state = sendArpReq;
+    }
     uint8_t optionslength = 4;
     uint8_t options[] = { 0x02, 0x04, 0x05, 0xB4 };
 
@@ -384,8 +425,9 @@ int main(void)
                     uint32_t allclient;
                     allclient = client_ip[3] | (client_ip[2] << 8)
                             | (client_ip[1] << 16) | (client_ip[0] << 24);
-                    writeEeprom(eeprom_address+1, allclient);
-                    etherSetIpAddress(client_ip[0],client_ip[1],client_ip[2],client_ip[3]);
+                    writeEeprom(eeprom_address + 1, allclient);
+                    etherSetIpAddress(client_ip[0], client_ip[1], client_ip[2],
+                                      client_ip[3]);
                     etherGetIpAddress(tcp.source_Ip);
                     putsUart0("client ip set");
                     putcUart0('\n');
@@ -394,12 +436,18 @@ int main(void)
                     valid = true;
 
                 }
+                if (isCommand(&data_input, "reboot", 0))
+                {
+                    putsUart0("Microcontroller rebooting...\n\r");
+                    NVIC_APINT_R = (0x05FA0000 | NVIC_APINT_SYSRESETREQ);
+                }
 
                 if (isCommand(&data_input, "connect", 0))
                 {
 
                     current_state = sendArpReq;
                     valid = true;
+                    putsUart0("connection started\n\r");
                     //check_state = false;
 
                 }
@@ -418,6 +466,7 @@ int main(void)
                     strcpy(message, message1);
                     message_size = strLength;
                     valid = true;
+                    putsUart0("Message published\n\r");
                     //check_state = false;
 
                 }
@@ -429,6 +478,7 @@ int main(void)
                     strcpy(topic, topic1);
                     topic_size = strLength;
                     valid = true;
+                    putsUart0("Topic subscribed\n\r");
                     //check_state = false;
 
                 }
@@ -439,6 +489,7 @@ int main(void)
                     strcpy(topic, topic1);
                     topic_size = strLength;
                     valid = true;
+                    putsUart0("Topic unsubscribed\n\r");
                     //check_state = false;
 
                 }
@@ -447,9 +498,15 @@ int main(void)
                 {
                     current_state = disconnect;
                     valid = true;
+                    putsUart0("Disconnected Thank you\n\r");
                     //check_state = false;
                 }
-                valid = checkCommand(data_input);
+                if (!valid)
+                {
+                    putsUart0("Invalid command\n\r");
+
+                }
+
                 putcUart0('\n');
                 putcUart0('\r');
             }
@@ -478,22 +535,25 @@ int main(void)
         if (current_state == disconnect)
         {
             Mqttpacket *mqtt_disconnect = (Mqttpacket*) revtcp->data;
+
             mqtt_disconnect->Control_Header = 0xE0;
+
             mqtt_disconnect->Packet_Remaining_length[0] = 0;
             data_length = 2 + mqtt_disconnect->Packet_Remaining_length[0];
-            flag = 0x5000 | 0x0010 | 0x0008;      //PSH and ACK
+            flag = 0x5000 | 0x0010 | 0x0008|0x0001;      //PSH and ACK
 
             sendTCP(data, tcp, flag, sequencenum, acknum, data_length, 0, 0);
-            current_state = disconnectack;
+            current_state = finack;
         }
 
         if (current_state == unsubscribe)
         {
             Mqttpacket *mqtt_unsubscribe = (Mqttpacket*) revtcp->data;
             mqtt_unsubscribe->Control_Header = 0xA2;
+            uint8_t bytes = 0;
             uint8_t unsubscribetopic_length = topic_size + sizeof(uint16_t);
             uint32_t Remaining_length = MQTTremaininglength(
-                    unsubscribetopic_length + 2);
+                    unsubscribetopic_length + 2, bytes);
             data_length = 2 + Remaining_length;
             mqtt_unsubscribe->Packet_Remaining_length[0] = Remaining_length;
             //packet_id
@@ -521,35 +581,47 @@ int main(void)
         {
             Mqttpacket *mqtt_subscribe = (Mqttpacket*) revtcp->data;
             mqtt_subscribe->Control_Header = 0x82;
+            uint8_t bytes = 0;
             uint8_t subscribetopic_length = topic_size + sizeof(uint16_t);
             uint32_t Remaining_length = MQTTremaininglength(
-                    subscribetopic_length + 3);
+                    subscribetopic_length + 3, bytes);
             data_length = 2 + Remaining_length;
 
             mqtt_subscribe->Packet_Remaining_length[0] = Remaining_length;
+            if (bytes > 0)
+            {
+                mqtt_subscribe->Packet_Remaining_length[1] = Remaining_length
+                        & 0xFF00;
+            }
             //packet_id
-            mqtt_subscribe->Packet_Remaining_length[1] = 0x00;
-            mqtt_subscribe->Packet_Remaining_length[2] = 0x04;
+            mqtt_subscribe->Packet_Remaining_length[1 + bytes] = 0x00;
+            mqtt_subscribe->Packet_Remaining_length[2 + bytes] = 0x04;
 
 //            //
 //            mqtt_subscribe->Packet_Remaining_length[3] = 0x00;
 //            mqtt_subscribe->Packet_Remaining_length[4] = 0x04;
-            mqtt_subscribe->Packet_Remaining_length[3] = topic_size >> 8;
+            mqtt_subscribe->Packet_Remaining_length[3 + bytes] = topic_size
+                    >> 8;
 
-            mqtt_subscribe->Packet_Remaining_length[4] = topic_size & 0x00FF;
+            mqtt_subscribe->Packet_Remaining_length[4 + bytes] = topic_size
+                    & 0x00FF;
 
             uint8_t i = 0;
+            uint8_t numtopics = 0;
 
             for (i = 0; i < topic_size; i++)
             {
-                mqtt_subscribe->Packet_Remaining_length[5 + i] = topic[i];
+                mqtt_subscribe->Packet_Remaining_length[5 + i + bytes] =
+                        topic[i];
+                subscribed_topics[numtopics][i] = topic[i];
+                numtopics++;
             }
 
 //            mqtt_subscribe->Packet_Remaining_length[5] = 'd';
 //            mqtt_subscribe->Packet_Remaining_length[6] = 'z';
 //            mqtt_subscribe->Packet_Remaining_length[7] = 'e';
 //            mqtt_subscribe->Packet_Remaining_length[8] = 's';
-            mqtt_subscribe->Packet_Remaining_length[6 + i] = 0x02;
+            mqtt_subscribe->Packet_Remaining_length[5 + topic_size + bytes] = 2;
 
             current_state = suback;
 
@@ -566,51 +638,68 @@ int main(void)
 
             uint8_t publishvariableheader_length = topic_size
                     + sizeof(uint16_t);
+            uint8_t bytes = 0;
 
             uint32_t Remaining_length = MQTTremaininglength(
                     publishvariableheader_length + sizeof(uint16_t)
-                            + message_size);
+                            + message_size,
+                    bytes);
 
             mqtt_publish->Control_Header = 0x30 | qos;
-            mqtt_publish->Packet_Remaining_length[0] = Remaining_length;
+            mqtt_publish->Packet_Remaining_length[0] = Remaining_length & 0xFF;
 
+            if (bytes > 0)
+            {
+                mqtt_publish->Packet_Remaining_length[1] = Remaining_length
+                        & 0xFF00;
+            }
             data_length = 2 + Remaining_length;
 
-            mqtt_publish->Packet_Remaining_length[1] = topic_size >> 8;
-            mqtt_publish->Packet_Remaining_length[2] = topic_size & 0x00FF;
+            mqtt_publish->Packet_Remaining_length[1 + bytes] = topic_size >> 8;
+            mqtt_publish->Packet_Remaining_length[2 + bytes] = topic_size
+                    & 0x00FF;
 
             uint8_t i = 0;
 
             for (i = 0; i < topic_size; i++)
             {
-                mqtt_publish->Packet_Remaining_length[3 + i] = topic[i];
+                mqtt_publish->Packet_Remaining_length[3 + i + bytes] = topic[i];
             }
-
-            mqtt_publish->Packet_Remaining_length[3 + topic_size] = message_size
-                    >> 8;
-            mqtt_publish->Packet_Remaining_length[4 + topic_size] = message_size
-                    & 0x00FF;
-
             uint8_t qos_length = 0;
 
             if (packet_id > 0)
             {
-                mqtt_publish->Packet_Remaining_length[5 + topic_size] = 0x00;
-                mqtt_publish->Packet_Remaining_length[6 + topic_size] = 0x04;
+                mqtt_publish->Packet_Remaining_length[3 + topic_size + bytes] =
+                        0x00;
+                mqtt_publish->Packet_Remaining_length[4 + topic_size + bytes] =
+                        0x08;
                 qos_length = 2;
             }
+//
+//            mqtt_publish->Packet_Remaining_length[3 + topic_size + bytes] =
+//                    message_size >> 8;
+//            mqtt_publish->Packet_Remaining_length[4 + topic_size + bytes] =
+//                    message_size & 0x00FF;
+
 //
 //
             for (i = 0; i < message_size; i++)
             {
-                mqtt_publish->Packet_Remaining_length[5 + topic_size + i
-                        + qos_length] = message[i];
+                mqtt_publish->Packet_Remaining_length[3 + topic_size + i
+                        + qos_length + bytes] = message[i];
             }
+//            for(i=0;i<3;i++)
+//            {
+//                if (strcmp(subscribed_topics[i],topic))
+//                {
+//                    putsUart0("dijeshshdh");
+//                }
+//            }
 
             flag = 0x5000 | 0x0010 | 0x0008;      //PSH and ACK
-
-            sendTCP(data, tcp, flag, sequencenum, acknum, data_length, 0, 0);
             current_state = waitPublish;
+            sendTCP(data, tcp, flag, sequencenum, acknum, data_length, 0, 0);
+
             //check_state = true;
 
         }
@@ -620,11 +709,12 @@ int main(void)
             Mqttpacket *mqtt_connect = (Mqttpacket*) revtcp->data;
             char clientID[4] = "dzes";
             uint16_t clientID_length = sizeof(clientID);
-
+            uint8_t bytes = 0;
             uint8_t connect_variable_length = 10;
             uint32_t Remaining_length = MQTTremaininglength(
                     connect_variable_length + sizeof(clientID_length)
-                            + clientID_length);
+                            + clientID_length,
+                    bytes);
 
             mqtt_connect->Control_Header = 0x10;   //for connect
 
@@ -649,7 +739,7 @@ int main(void)
 
             //Keep Alive for 128 seconds
             mqtt_connect->Packet_Remaining_length[9] = 0x00;
-            mqtt_connect->Packet_Remaining_length[10] = 0x28;
+            mqtt_connect->Packet_Remaining_length[10] = 0x5A;
 
             //ClientIDlength
             mqtt_connect->Packet_Remaining_length[11] = 0x00;
@@ -678,6 +768,13 @@ int main(void)
             etherGetPacket(data, MAX_PACKET_SIZE);
             waitMicrosecond(100000);
             // Handle ARP request
+//            if (etherIsIp(data)&& current_state==waitPublish)
+//            {
+//
+//
+//
+//
+//            }
 
             if (etherIsArpResponse(data) && current_state == waitArpResp)
             {
@@ -694,88 +791,114 @@ int main(void)
                 current_state = sendTcpSyn;
             }
 
-            if (etherIsIp(data) && current_state == waitTcpSynAck
-                    && (ntohs(revtcp->offsetFields) & 0x012))
-            {
 
-                sequencenum = ntohl(revtcp->acknowledgementNumber);
-                acknum = ntohl(revtcp->sequenceNumber) + 1;
-                flag = 0x5010;
-                data_length = 0;
-                sendTCP(data, tcp, flag, sequencenum, acknum, data_length, 0,
-                        0);
+                if (current_state==finack)
+                {
+                    sequencenum = ntohl(revtcp->acknowledgementNumber);
+                    acknum = ntohl(revtcp->sequenceNumber) + 1;
+                    flag=0x5010;
+                    data_length=0;
+                    sendTCP(data, tcp, flag, sequencenum, acknum, data_length,
+                                              0, 0);
+                    acknum = 0;
+                                    sequencenum = 0;
+                    current_state=idle;
+                }
+                if (current_state == waitTcpSynAck)
+                {
 
-                putsUart0("Done");
+                    sequencenum = ntohl(revtcp->acknowledgementNumber);
+                    acknum = ntohl(revtcp->sequenceNumber) + 1;
+                    flag = 0x5010;
+                    data_length = 0;
+                    sendTCP(data, tcp, flag, sequencenum, acknum, data_length,
+                            0, 0);
 
-                current_state = sendMqttConnect;
+                    putsUart0("Done");
 
-            }
+                    current_state = sendMqttConnect;
 
-            if (current_state == waitMqttResp)
-            {
-                sequencenum = sequencenum + data_length;
-                acknum = ntohl(revtcp->sequenceNumber) + 4;
-                data_length = 0;
-                flag = 0x5010;
-                sendTCP(data, tcp, flag, sequencenum, acknum, data_length, 0,
-                        0);
-                setPinValue(BLUE_LED, 1);
+                }
 
-                current_state = idle;
-            }
+                if (current_state == waitMqttResp)
+                {
+//                    uint16_t rev_data_length=0;
+//                    uint8_t rev_tcpHeaderLength =(htons(revtcp->offsetFields&0xF0)>>4)*4;
+//                    rev_data_length=(htons(revip->length) - rev_tcpHeaderLength - sizeof(ipHeader));
 
-            if (current_state == waitPublish)
-            {
-                sequencenum = sequencenum + data_length;
-                acknum = ntohl(revtcp->sequenceNumber) + 4;
-                data_length = 0;
-                flag = 0x5010;
-                sendTCP(data, tcp, flag, sequencenum, acknum, data_length, 0,
-                        0);
-                current_state = idle;
-                // check_state = true;
-            }
 
-            if (current_state == suback)
-            {
-                sequencenum = sequencenum + data_length;
-                acknum = ntohl(revtcp->sequenceNumber) + 5;
-                data_length = 0;
-                flag = 0x5010;
-                sendTCP(data, tcp, flag, sequencenum, acknum, data_length, 0,
-                        0);
-                current_state = idle;
-                //check_state = true;
+                    sequencenum = ntohl(revtcp->acknowledgementNumber);
+                    acknum = ntohl(revtcp->sequenceNumber) + 4;
+                    data_length = 0;
+                    flag = 0x5010;
+                    sendTCP(data, tcp, flag, sequencenum, acknum, data_length,
+                            0, 0);
+                    setPinValue(BLUE_LED, 1);
+                    putsUart0("Connection established\n\r");
 
-            }
+                    current_state = idle;
+                }
 
-            if (current_state == unsuback)
-            {
-                sequencenum = sequencenum + data_length;
-                acknum = ntohl(revtcp->sequenceNumber) + 4;
-                data_length = 0;
-                flag = 0x5010;
-                sendTCP(data, tcp, flag, sequencenum, acknum, data_length, 0,
-                        0);
-                current_state = idle;
-                //check_state = true;
+                if (current_state == waitPublish)
+                {
 
-            }
-            if (current_state == disconnectack)
-            {
-                sequencenum = sequencenum + data_length;
-                acknum = ntohl(revtcp->sequenceNumber) + 1;
-                data_length = 0;
-                flag = 0x5010;
-                sendTCP(data, tcp, flag, sequencenum, acknum, data_length, 0,
-                        0);
-                acknum=0;
-                sequencenum=0;
+                    //                                }
 
-                setPinValue(BLUE_LED,0);
-                current_state = idle;
-                //check_state = true;
+                    sequencenum = ntohl(revtcp->acknowledgementNumber);
+                    acknum = ntohl(revtcp->sequenceNumber) + 4;
+                    data_length = 0;
+                    flag = 0x5010;
+                    sendTCP(data, tcp, flag, sequencenum, acknum, data_length,
+                            0, 0);
+                    current_state = idle;
 
+                    // check_state = true;
+                }
+
+                if (current_state == suback)
+                {
+                    sequencenum = ntohl(revtcp->acknowledgementNumber);
+                    acknum = ntohl(revtcp->sequenceNumber) + 5;
+                    data_length = 0;
+                    flag = 0x5010;
+                    sendTCP(data, tcp, flag, sequencenum, acknum, data_length,
+                            0, 0);
+                    current_state = idle;
+                    //check_state = true;
+
+                }
+
+                if (current_state == unsuback)
+                {
+                    sequencenum = ntohl(revtcp->acknowledgementNumber);
+                    acknum = ntohl(revtcp->sequenceNumber) + 4;
+                    data_length = 0;
+                    flag = 0x5010;
+                    sendTCP(data, tcp, flag, sequencenum, acknum, data_length,
+                            0, 0);
+                    current_state = idle;
+                    //check_state = true;
+
+                }
+                if (current_state == disconnectack)
+                {
+                    sequencenum = ntohl(revtcp->acknowledgementNumber);
+                    acknum = ntohl(revtcp->sequenceNumber) + 1;
+                    data_length = 0;
+                    flag = 0x5010;
+                    sendTCP(data, tcp, flag, sequencenum, acknum, data_length,
+                            0, 0);
+                    acknum = 0;
+                    sequencenum = 0;
+                    flag = 0x5011;
+                    sendTCP(data, tcp, flag, sequencenum, acknum, data_length,
+                                            0, 0);
+
+                    setPinValue(BLUE_LED, 0);
+                    current_state = idle;
+                    //check_state = true;
+
+                }
             }
 
         }
